@@ -1,4 +1,6 @@
 package pl.tlewand.task3.reservation;
 
-public class ReservationEmailService {
+public interface ReservationEmailService {
+
+    void sendConfirmation(ConfirmationEmail email);
 }

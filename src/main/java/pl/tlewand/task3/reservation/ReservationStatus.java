@@ -1,4 +1,7 @@
 package pl.tlewand.task3.reservation;
 
-public class ReservationStatus {
+public enum ReservationStatus {
+    PENDING,
+    CONFIRMED,
+    CANCELLED
 }

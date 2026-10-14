@@ -1,4 +1,8 @@
 package pl.tlewand.task3.reservation;
 
-public class ReservationRepository {
+public interface ReservationRepository {
+
+    Reservation save(Reservation reservation);
+
+    boolean existsByRoomIdAndTimeSlot(String roomId, TimeSlot timeSlot);
 }
