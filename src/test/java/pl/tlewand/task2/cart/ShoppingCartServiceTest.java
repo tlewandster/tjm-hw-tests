@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -47,7 +48,7 @@ public class ShoppingCartServiceTest {
                     .thenReturn(0.0);
             // when
             double result = shoppingCartService.calculateTotal(customerId, items);
-            //then
+            // then
             assertThat(result).isCloseTo(9.9, within(0.01));
         }
 
@@ -63,7 +64,7 @@ public class ShoppingCartServiceTest {
                     .thenReturn(0.1);
             // when
             double result = shoppingCartService.calculateTotal(customerId, items);
-            //then
+            // then
             assertThat(result).isCloseTo(9.0, within(0.00));
         }
 
@@ -84,7 +85,7 @@ public class ShoppingCartServiceTest {
                     .thenReturn(0.0);
             // when
             double result = shoppingCartService.calculateTotal(customerId, items);
-            //then
+            // then
             assertThat(result).isCloseTo(70.0, within(0.00));
         }
 
@@ -95,9 +96,25 @@ public class ShoppingCartServiceTest {
             List<CartItem> items = List.of();
             // when
             Executable action = () -> shoppingCartService.calculateTotal(customerId, items);
-            //then
+            // then
             assertThrows(IllegalArgumentException.class, action);
             verifyNoInteractions(productRepository, discountService);
         }
+    }
+
+    @Test
+    void shouldThrowExceptionWhenProductNotExist() {
+        // given
+        String customerId = "cust-05";
+        String productId = "prod-99";
+        List<CartItem> items = List.of(new CartItem(productId, 2));
+
+        when(productRepository.findById(anyString()))
+                .thenReturn(Optional.empty());
+        // when
+        Executable action = () -> shoppingCartService.calculateTotal(customerId, items);
+        ProductNotFoundException exception = assertThrows(ProductNotFoundException.class,action);
+        // then
+        assertTrue(exception.getMessage().contains(productId));
     }
 }
