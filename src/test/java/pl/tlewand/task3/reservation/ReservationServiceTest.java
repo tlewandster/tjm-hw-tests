@@ -17,6 +17,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,6 +47,9 @@ public class ReservationServiceTest {
 
     @Captor
     private ArgumentCaptor<ConfirmationEmail> emailCaptor;
+
+    @Captor
+    private ArgumentCaptor<String> publishCaptor;
 
     private Room room;
     private TimeSlot timeSlot;
@@ -122,6 +126,27 @@ public class ReservationServiceTest {
                     timeSlot.getEndTime().toString(),
                     generatedCode
             );
+        }
+
+        @Test
+        void shouldPublishEventWithReservationDetails() {
+            //given
+            String organizerEmail = "jas.kunefal@beka.pl";
+            int attendees = 5;
+            String generatedCode = "RES-A1B2C3D4";
+            givenStubsSetup(generatedCode);
+
+            //when
+            reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
+
+            //then
+            verify(eventPublisher).publish(eq("RESERVATION_CREATED"), publishCaptor.capture());
+            String details = publishCaptor.getValue();
+            assertThat(details).contains(
+                    generatedCode,
+                    room.getName()
+            );
+
         }
     }
 }
