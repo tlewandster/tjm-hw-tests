@@ -53,6 +53,9 @@ public class ReservationServiceTest {
 
     private Room room;
     private TimeSlot timeSlot;
+    String organizerEmail = "jas.kunefal@beka.pl";
+    int attendees = 5;
+    String generatedCode = "RES-A1B2C3D4";
 
     @BeforeEach
     void setUp() {
@@ -62,7 +65,7 @@ public class ReservationServiceTest {
                 LocalTime.of(16, 0));
     }
 
-    private void givenStubsSetup(String generatedCode) {
+    private void givenStubsSetup() {
 
         when(roomRepository.findById(room.getRoomId())).thenReturn(Optional.of(room));
         when(codeGenerator.generate()).thenReturn(generatedCode);
@@ -81,10 +84,7 @@ public class ReservationServiceTest {
         @Test
         void shouldSaveReservationWithCorrectInformation() {
             //given
-            String organizerEmail = "jas.kunefal@beka.pl";
-            int attendees = 5;
-            String generatedCode = "RES-A1B2C3D4";
-            givenStubsSetup(generatedCode);
+            givenStubsSetup();
 
             //when
             Reservation reservation = reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
@@ -105,10 +105,7 @@ public class ReservationServiceTest {
         @Test
         void shouldSendEmailWithCorrectContent() {
             //given
-            String organizerEmail = "jas.kunefal@beka.pl";
-            int attendees = 5;
-            String generatedCode = "RES-A1B2C3D4";
-            givenStubsSetup(generatedCode);
+            givenStubsSetup();
 
             //when
             reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
@@ -131,10 +128,7 @@ public class ReservationServiceTest {
         @Test
         void shouldPublishEventWithReservationDetails() {
             //given
-            String organizerEmail = "jas.kunefal@beka.pl";
-            int attendees = 5;
-            String generatedCode = "RES-A1B2C3D4";
-            givenStubsSetup(generatedCode);
+            givenStubsSetup();
 
             //when
             reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
