@@ -10,9 +10,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -20,38 +21,29 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ReservationService - advanced mocking")
 public class ReservationServiceTest {
-    @Mock
-    private RoomRepository roomRepository;
-
-    @Mock
-    private ReservationRepository reservationRepository;
-
-    @Mock
-    private ReservationEmailService emailService;
-
-    @Mock
-    private ConfirmationCodeGenerator codeGenerator;
-
-    @Mock
-    private EventPublisher eventPublisher;
-
-    @InjectMocks
-    private ReservationService reservationService;
-
-    @Captor
-    private ArgumentCaptor<Reservation> reservationCaptor;
-
-    @Captor
-    private ArgumentCaptor<ConfirmationEmail> emailCaptor;
-
-    @Captor
-    private ArgumentCaptor<String> publishCaptor;
-
-    private Room room;
-    private TimeSlot timeSlot;
     String organizerEmail = "jas.kunefal@beka.pl";
     int attendees = 5;
     String generatedCode = "RES-A1B2C3D4";
+    @Mock
+    private RoomRepository roomRepository;
+    @Mock
+    private ReservationRepository reservationRepository;
+    @Mock
+    private ReservationEmailService emailService;
+    @Mock
+    private ConfirmationCodeGenerator codeGenerator;
+    @Mock
+    private EventPublisher eventPublisher;
+    @InjectMocks
+    private ReservationService reservationService;
+    @Captor
+    private ArgumentCaptor<Reservation> reservationCaptor;
+    @Captor
+    private ArgumentCaptor<ConfirmationEmail> emailCaptor;
+    @Captor
+    private ArgumentCaptor<String> publishCaptor;
+    private Room room;
+    private TimeSlot timeSlot;
 
     @BeforeEach
     void setUp() {
@@ -149,7 +141,7 @@ public class ReservationServiceTest {
 
         @Test
         @DisplayName("Should perform operations in correct order")
-        void shouldPerformOperationsInCorrectOrder(){
+        void shouldPerformOperationsInCorrectOrder() {
             //given
             givenStubsSetup();
 
@@ -166,12 +158,77 @@ public class ReservationServiceTest {
             );
 
             order.verify(roomRepository).findById(any());
-            order.verify(reservationRepository).existsByRoomIdAndTimeSlot(any(),any());
+            order.verify(reservationRepository).existsByRoomIdAndTimeSlot(any(), any());
             order.verify(codeGenerator).generate();
             order.verify(reservationRepository).save(any());
             order.verify(emailService).sendConfirmation(any());
-            order.verify(eventPublisher).publish(any(),any());
+            order.verify(eventPublisher).publish(any(), any());
         }
 
+    }
+
+    @Nested
+    @DisplayName("thenAnswer - dynamic generation of results")
+    class DynamicGenerationOfResults {
+
+        @Test
+        @DisplayName("Should generate unique codes for each subsequent reservation")
+        void shouldGenerateUniqueCodesForEachSubsequentReservation() {
+            //given
+            int[] counter = {0};
+            when(roomRepository.findById(room.getRoomId())).thenReturn(Optional.of(room));
+            when(codeGenerator.generate()).thenAnswer(inv -> {
+                counter[0]++;
+                return "RES-0000000" + counter[0];
+            });
+            when(reservationRepository.save(any(Reservation.class)))
+                    .thenAnswer(inv -> {
+                        Reservation reservation = inv.getArgument(0);
+                        reservation.setId(1L);
+                        return reservation;
+                    });
+
+            //when
+            reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
+            reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
+            reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
+
+            //then
+            verify(reservationRepository,times(3)).save(reservationCaptor.capture());
+            List<Reservation> saved = reservationCaptor.getAllValues();
+
+            assertThat(saved)
+                    .extracting(Reservation::getConfirmationCode)
+                    .containsExactly(
+                            "RES-00000001",
+                            "RES-00000002",
+                            "RES-00000003"
+                    );
+        }
+    }
+
+    @Nested
+    @DisplayName("Validation - Error Testing")
+    class ErrorTesting {
+        @Test
+        @DisplayName("Should throw exception when room not exist")
+        void shouldThrowExceptionWhenRoomNotExist() {
+            //given
+            when(roomRepository.findById(room.getRoomId())).thenReturn(Optional.empty());
+
+            //when
+            Throwable thrown = catchThrowable(() -> reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees));
+
+            //then
+            assertThat(thrown)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining(room.getRoomId());
+            verifyNoInteractions(
+                    reservationRepository,
+                    codeGenerator,
+                    emailService,
+                    eventPublisher
+            );
+        }
     }
 }
