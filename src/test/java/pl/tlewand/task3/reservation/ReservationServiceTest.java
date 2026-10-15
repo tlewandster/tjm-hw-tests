@@ -230,5 +230,33 @@ public class ReservationServiceTest {
                     eventPublisher
             );
         }
+
+        @Test
+        @DisplayName("Should throw exception when there are too many participants")
+        void shouldThrowExceptionWhenThereAreTooManyParticipants() {
+            //given
+            when(roomRepository.findById(room.getRoomId())).thenReturn(Optional.of(room));
+            int tooManyAttendees = room.getCapacity()+1;
+
+            //when
+            Throwable exception = catchThrowable(() -> reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, tooManyAttendees));
+
+            //then
+            assertThat(exception)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContainingAll(
+                            room.getName(),
+                            String.valueOf(room.getCapacity()),
+                            String.valueOf(tooManyAttendees)
+                    );
+            verifyNoInteractions(
+                    reservationRepository,
+                    codeGenerator,
+                    emailService,
+                    eventPublisher
+            );
+        }
     }
+
+
 }
