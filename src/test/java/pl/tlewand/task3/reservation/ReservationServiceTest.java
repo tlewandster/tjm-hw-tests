@@ -5,10 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -18,8 +15,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ReservationService - advanced mocking")
@@ -82,6 +78,7 @@ public class ReservationServiceTest {
     class VerificationOfStoredData {
 
         @Test
+        @DisplayName("Should save reservation with correct information")
         void shouldSaveReservationWithCorrectInformation() {
             //given
             givenStubsSetup();
@@ -103,6 +100,7 @@ public class ReservationServiceTest {
         }
 
         @Test
+        @DisplayName("Should send email with correct content")
         void shouldSendEmailWithCorrectContent() {
             //given
             givenStubsSetup();
@@ -126,6 +124,7 @@ public class ReservationServiceTest {
         }
 
         @Test
+        @DisplayName("Should publish event with reservation details")
         void shouldPublishEventWithReservationDetails() {
             //given
             givenStubsSetup();
@@ -142,5 +141,37 @@ public class ReservationServiceTest {
             );
 
         }
+    }
+
+    @Nested
+    @DisplayName("InOrder - Verification of operations order")
+    class VerificationOfOperationsOrder {
+
+        @Test
+        @DisplayName("Should perform operations in correct order")
+        void shouldPerformOperationsInCorrectOrder(){
+            //given
+            givenStubsSetup();
+
+            //when
+            reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
+
+            //then
+            InOrder order = inOrder(
+                    roomRepository,
+                    reservationRepository,
+                    codeGenerator,
+                    emailService,
+                    eventPublisher
+            );
+
+            order.verify(roomRepository).findById(any());
+            order.verify(reservationRepository).existsByRoomIdAndTimeSlot(any(),any());
+            order.verify(codeGenerator).generate();
+            order.verify(reservationRepository).save(any());
+            order.verify(emailService).sendConfirmation(any());
+            order.verify(eventPublisher).publish(any(),any());
+        }
+
     }
 }
