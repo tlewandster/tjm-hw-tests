@@ -13,7 +13,8 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -194,7 +195,7 @@ public class ReservationServiceTest {
             reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees);
 
             //then
-            verify(reservationRepository,times(3)).save(reservationCaptor.capture());
+            verify(reservationRepository, times(3)).save(reservationCaptor.capture());
             List<Reservation> saved = reservationCaptor.getAllValues();
 
             assertThat(saved)
@@ -236,7 +237,7 @@ public class ReservationServiceTest {
         void shouldThrowExceptionWhenThereAreTooManyParticipants() {
             //given
             when(roomRepository.findById(room.getRoomId())).thenReturn(Optional.of(room));
-            int tooManyAttendees = room.getCapacity()+1;
+            int tooManyAttendees = room.getCapacity() + 1;
 
             //when
             Throwable exception = catchThrowable(() -> reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, tooManyAttendees));
@@ -256,7 +257,27 @@ public class ReservationServiceTest {
                     eventPublisher
             );
         }
+
+        @Test
+        @DisplayName("Should throw exception when time slot is already taken")
+        void shouldThrowExceptionWhenTimeSlotIsAlreadyTaken() {
+            //given
+            when(roomRepository.findById(room.getRoomId())).thenReturn(Optional.of(room));
+            when(reservationRepository.existsByRoomIdAndTimeSlot(any(), any())).thenReturn(true);
+
+            //when
+            Throwable exception = catchThrowable(() -> reservationService.createReservation(room.getRoomId(), organizerEmail, timeSlot, attendees));
+
+            //then
+            assertThat(exception)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining(room.getName());
+            verify(reservationRepository, never()).save(any());
+            verifyNoInteractions(
+                    codeGenerator,
+                    emailService,
+                    eventPublisher
+            );
+        }
     }
-
-
 }
